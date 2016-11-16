@@ -4,13 +4,12 @@ train_extraction:
 	mkdir -p ${JSON}
 	instance_extraction.sh
 	feature_extraction.sh
-	svm_rank_learn
+	train.sh
 
 train_disambiguate:
 	mkdir -p ${JSON}
 	instance_extraction.sh
 	feature_extraction.sh
-	svm_rank_learn
 
 test:
 	
