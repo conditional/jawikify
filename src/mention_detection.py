@@ -10,6 +10,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--train', default='train.f',
                                         help='training file')
 
+parser.add_argument('--model', default='model',
+                                        help='model file')
+
 args = parser.parse_args()
 #print args
 
