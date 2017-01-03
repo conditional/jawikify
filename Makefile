@@ -28,31 +28,72 @@ FILELIST_DEV = GSK_filelist.dev
 GSK_filelist:
 	ls /home/work/data/GSK/GSK2014-A/gsk-ene-1.1/bccwj/xml/*/*.xml | shuf > $@
 
+
+#
+# 候補生成のためのデータベース作成
+data/master06_candidates.json: data/master06_content.json
+	cat $< | ruby src/create_cg_data.rb $@
+
+# 書庫
+data/master06_candidates.kct: data/master06_candidates.json
+	cat $< | ruby src/compile_kb.rb -k mention -t $@
+
+#data/master06_features.json:
+
 # 1982 files => 1500 250 232
-GSK_filelist.train: GSK_filelist
-	head -n 1500 $< > $@
+#GSK_filelist.train: GSK_filelist
+#	head -n 1500 $< > $@
+#GSK_filelist.dev: GSK_filelist
+#	head -n 1750 $< | tail -n 250  > $@
+#GSK_filelist.test: GSK_filelist
+#	head -n 1982 $< | tail -n 232  > $@
 
-GSK_filelist.dev: GSK_filelist
-	head -n 1750 $< | tail -n 250  > $@
-
-GSK_filelist.test: GSK_filelist
-	head -n 1982 $< | tail -n 232  > $@
-
-md_to_json: GSK_filelist.train
+md_to_json: GSK_filelist
 	rm -f $(DIR_WORK)/json/*.json
-	cat GSK_filelist.train | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
+	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
-feature_extraction_train:
+feature_extraction:
 	mkdir -p $(DIR_WORK)/crfsuite/
 	rm -f $(DIR_WORK)/crfsuite/*.f
 	rm -f $(DIR_LOG)/*.fe.log
 	ls $(DIR_WORK)/json/*.json | parallel $(PARALLEL_OPTIONS) "cat {} |\
          ruby src/md_feature_extraction.rb > $(DIR_WORK)/crfsuite/{/}.f 2> $(DIR_LOG)/{/}.fe.log"
-	cat $(DIR_WORK)/crfsuite/*.f > $(DIR_WORK)/train.f
 
-work/train.ff:
-	cat $(DIR_WORK)/train.f | ruby src/label_abstraction.rb -h data/list-Name.txt > $(DIR_WORK)/train.ff
+work/all.ff:
+	cat work/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
-model: work/train.ff
-	crfsuite learn -m $@ -p max_iterations=20 $< > work/crfsuite.log
+work/chunking.model.all: work/all.ff
+	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
+
+test.result: work/chunking.model.all
+	cat test2.txt | ruby src/wrap_json.rb |\
+        ruby src/apply_mecab.rb |\
+        ruby src/annotate_offset.rb |\
+        ruby src/md_feature_extraction.rb -t features |\
+        ruby src/chunker.rb -m $< -f features -t chunk > result
+
+html_visualize:
+	cat test3.txt | bash analyse.sh | ruby src/to_html.rb > ~/public_html/jawikify_proto/index.html
+
+
+#
+# evaluation
+#
+crf_filelist:
+	ls work/crfsuite/*.f | shuf > $@
+	head -n 1500 $@ > $@.train
+	head -n 1750 $@ | tail -n 250 > $@.dev
+	head -n 1982 $@ | tail -n 232 > $@.test
+
+work/train.ff: crf_filelist.train 
+	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
+
+work/dev.ff: crf_filelist.dev
+	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
+
+work/test.ff: crf_filelist.test
+	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
+
+work/chunking.model.all: work/all.ff
+	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
