@@ -29,16 +29,25 @@ GSK_filelist:
 	ls /home/work/data/GSK/GSK2014-A/gsk-ene-1.1/bccwj/xml/*/*.xml | shuf > $@
 
 
-#
 # 候補生成のためのデータベース作成
 data/master06_candidates.json: data/master06_content.json
 	cat $< | ruby src/create_cg_data.rb $@
 
 # 書庫
+# few minutes, in maitai
 data/master06_candidates.kct: data/master06_candidates.json
 	cat $< | ruby src/compile_kb.rb -k mention -t $@
 
-#data/master06_features.json:
+# 3067.94s at maitai
+data/master06_content.kch: data/master06_content.json
+	cat $< | ruby src/compile_kb.rb -k entry -t $@
+
+# 形態素アノテート 180sec
+data/master06_content_mecab_annotated.json: data/master06_content.json
+	ruby src/apply_mecab_kb.rb < $< > $@
+
+data/master06_body_markup.txt:
+	cp /home/m-suzuki/wikipedia/data/20161101/body_markup.txt $@
 
 # 1982 files => 1500 250 232
 #GSK_filelist.train: GSK_filelist
