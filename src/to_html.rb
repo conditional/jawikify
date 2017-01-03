@@ -23,6 +23,12 @@ puts <<EOS
 .Organization {
   color: blue
 }
+.Person{
+  background-color: #a0a0ff;
+}
+.Event{
+  background-color: #ffa0a0;
+}
 </style>
 </head>
 <body>
@@ -49,6 +55,7 @@ while line = gets()
         buffer << surface
       end
     end
+    buffer << close() if status
     bb << buffer 
   end
   puts "<div>" + bb + "</div>"

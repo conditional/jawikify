@@ -45,7 +45,9 @@ class TopLevelAbstractor < NERTagAbstractor
     return "text" if orig == "text"
     return "O" if orig == "O"
     bio, t = orig.split("-")
-    return [bio, top_level_tag(t)].join("-")
+    top = top_level_tag(t)
+    return "O" if top == "O"
+    return [bio, top].join("-")
   end
 end
 

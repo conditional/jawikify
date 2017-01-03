@@ -169,5 +169,7 @@ while line = gets()
   idx += 1
 end
 
-# インスタンス区切りのための改行
-puts
+unless params["t"]
+  # インスタンス区切りのための改行
+  puts
+end
