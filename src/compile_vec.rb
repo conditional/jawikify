@@ -30,6 +30,7 @@ while line = gets()
   begin
     a = line.chomp.split(" ")
   rescue
+    @logger.warn("split error happen in  #{cnt}")
     next
   end
   k = a.shift

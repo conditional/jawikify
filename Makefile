@@ -49,6 +49,13 @@ data/master06_content_mecab_annotated.json: data/master06_content.json
 data/master06_body_markup.txt:
 	cp /home/m-suzuki/wikipedia/data/20161101/body_markup.txt $@
 
+data/charanda04.300.kch: data/charanda04.300.gz
+	zcat $< | ruby src/compile_vec.rb -t $@
+
+# BoWだけなら 404s
+work/kb.json: data/master06_content_mecab_annotated.json
+	ruby src/feature_extraction_from_kb.rb -t word_ids.tsv < $< > $@
+
 # 1982 files => 1500 250 232
 #GSK_filelist.train: GSK_filelist
 #	head -n 1500 $< > $@
