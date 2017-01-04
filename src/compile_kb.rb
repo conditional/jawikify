@@ -25,10 +25,17 @@ unless db.open(dbfilename, KyotoCabinet::DB::OCREATE | KyotoCabinet::DB::OWRITER
   exit(1)
 end
 
+at_exit{
+  db.close()
+}
+
+c = 0
 while line = gets()
   o = JSON.load(line)
+  @logger.warn(c) if c % 10000 == 0
   k = o[key]
   db.set(k,line)
+  c += 1
 end
 
-db.close()
+

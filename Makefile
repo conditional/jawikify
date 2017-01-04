@@ -52,9 +52,15 @@ data/master06_body_markup.txt:
 data/charanda04.300.kch: data/charanda04.300.gz
 	zcat $< | ruby src/compile_vec.rb -t $@
 
+data/master06_content_mecab_annotated.kch: data/master06_content_mecab_annotated.json
+	cat $< | ruby src/compile_kb.rb -k entry -t $@
+
 # BoWだけなら 404s
 work/kb.json: data/master06_content_mecab_annotated.json
 	ruby src/feature_extraction_from_kb.rb -t word_ids.tsv < $< > $@
+
+work/kb.kch: work/kb.json
+	cat $< | ruby src/compile_kb.rb -k entry -t $@
 
 # 1982 files => 1500 250 232
 #GSK_filelist.train: GSK_filelist
