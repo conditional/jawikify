@@ -59,6 +59,7 @@ data/master06_content_mecab_annotated.kch: data/master06_content_mecab_annotated
 work/kb.json: data/master06_content_mecab_annotated.json
 	ruby src/feature_extraction_from_kb.rb -t word_ids.tsv < $< > $@
 
+# 9490.56s
 work/kb.kch: work/kb.json
 	cat $< | ruby src/compile_kb.rb -k entry -t $@
 
