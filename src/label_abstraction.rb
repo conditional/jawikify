@@ -3,10 +3,6 @@
 
 =end
 
-require 'logger' 
-
-LOGGER = Logger.new(STDERR)
-
 class NERTagAbstractor
   def initialize(filename)
     @dict = Hash.new { |h,k| h[k] = [] }
@@ -51,31 +47,35 @@ class TopLevelAbstractor < NERTagAbstractor
   end
 end
 
-require 'optparse'
-
-params = ARGV.getopts("h:")
-
-if params["h"]
-  @generalizer = TopLevelAbstractor.new(params["h"])
-else
-  raise RuntimeError
-end
-
-while line = gets()
-  line = line.chomp
-  if line == ""
-    puts
-    next
-  end
-  arr = line.chomp.split("\t")
-  tag = arr.shift
-  features = arr
+if __FILE__ == $0
+  require 'logger' 
   
-  if features == nil
-    puts 
-    next
+  LOGGER = Logger.new(STDERR)
+  require 'optparse'
+  params = ARGV.getopts("h:")
+  
+  if params["h"]
+    @generalizer = TopLevelAbstractor.new(params["h"])
   else
-    newtag = @generalizer.generalize(tag)
-    puts [newtag, features].join("\t")
+    raise RuntimeError
+  end
+  
+  while line = gets()
+    line = line.chomp
+    if line == ""
+      puts
+      next
+    end
+    arr = line.chomp.split("\t")
+    tag = arr.shift
+    features = arr
+    
+    if features == nil
+      puts 
+      next
+    else
+      newtag = @generalizer.generalize(tag)
+      puts [newtag, features].join("\t")
+    end
   end
 end
