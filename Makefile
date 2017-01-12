@@ -57,9 +57,11 @@ data/master06_content_mecab_annotated.kch: data/master06_content_mecab_annotated
 
 #
 # 知識ベースから作った IDF データベース
+# about: 219.72s
 data/master06_content_mecab_annotated.idf.json: data/master06_content_mecab_annotated.json
 	cat $< | ruby src/calc_idf.rb > $@
 # ↑の kch
+# 100万エントリ、10秒足らず
 data/master06_content_mecab_annotated.idf.kch: data/master06_content_mecab_annotated.idf.json
 	cat $< | ruby src/compile_kb.rb -k k -t $@
 
