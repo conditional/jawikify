@@ -49,9 +49,17 @@ class ToJSON
     offset = 0;
     offsets = xml.xpath("/DOC/TEXT").first.children.map{|e|
       ret = {
-        "surface" => e.text, "tag" => e.name,  
+        "surface" => e.text, "tag" => e.name,
         "offset" => { "start" => offset,  "end" => (offset + e.text.length - 1) , "length" => e.text.length}
       } ;
+      if e.attribute("title")
+        ret['title'] = e.attribute("title")
+        ret['wiki']  = e.attribute("wiki")
+      else
+        ret['title'] = nil
+        ret['wiki']  = nil
+      end
+      
       offset += e.text.length;
       ret
     }

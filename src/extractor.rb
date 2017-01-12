@@ -37,7 +37,6 @@ class IOBDecoder
 end
 
 while line = gets()
-  
   o = JSON.load(line.chomp)
   o["ner"]["extracted"] = []
   o["ner"]["mecab"].each.with_index do |sentence, idx|

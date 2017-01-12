@@ -80,34 +80,38 @@ class FeatureExtractorContainer
   end
 end
 
-require 'logger'
-require 'optparse'
+if __FILE__ == $0
 
-params = ARGV.getopts("t:d:v:")
-args={}
-args['id_filename']      = params['t'] || 'word_ids.tsv'
-args['vector_filename']  = params['v'] || 'data/charanda04.300.kch'
-args['vector_dimention'] = (params['d'] || 300).to_i
-
-container = FeatureExtractorContainer.new()
-#container.add(FE_entity_vector.new)
-container.add(FE_BoW.new(args))
-#container.add(FE_w2v_averaging.new(args))
-
-@logger = Logger.new(STDERR)
-cnt = 0
-
-at_exit {
-  container.teardown(args)
-}
-
-while line = gets()
-  @logger.warn(cnt) if cnt % 1000 == 0
-  o = JSON.load(line)
-  o['features'] = []
-  container.each do |fe|
-    o['features'] << {name: fe.class.name, vector: fe.extract(o),type:fe.type}
+  require 'logger'
+  require 'optparse'
+  
+  params = ARGV.getopts("t:d:v:")
+  args={}
+  args['id_filename']      = params['t'] || 'word_ids.tsv'
+  args['vector_filename']  = params['v'] || 'data/charanda04.300.kch'
+  args['vector_dimention'] = (params['d'] || 300).to_i
+  
+  container = FeatureExtractorContainer.new()
+  #container.add(FE_entity_vector.new)
+  container.add(FE_BoW.new(args))
+  #container.add(FE_w2v_averaging.new(args))
+  
+  @logger = Logger.new(STDERR)
+  cnt = 0
+  
+  at_exit {
+    container.teardown(args)
+  }
+  
+  while line = gets()
+    @logger.warn(cnt) if cnt % 1000 == 0
+    o = JSON.load(line)
+    o['features'] = []
+    container.each do |fe|
+      o['features'] << {name: fe.class.name, vector: fe.extract(o),type:fe.type}
+    end
+    puts o.to_json
+    cnt += 1
   end
-  puts o.to_json
-  cnt += 1
+  
 end

@@ -55,6 +55,14 @@ data/charanda04.300.kch: data/charanda04.300.gz
 data/master06_content_mecab_annotated.kch: data/master06_content_mecab_annotated.json
 	cat $< | ruby src/compile_kb.rb -k entry -t $@
 
+#
+# 知識ベースから作った IDF データベース
+data/master06_content_mecab_annotated.idf.json: data/master06_content_mecab_annotated.json
+	cat $< | ruby src/calc_idf.rb > $@
+# ↑の kch
+data/master06_content_mecab_annotated.idf.kch: data/master06_content_mecab_annotated.idf.json
+	cat $< | ruby src/compile_kb.rb -k k -t $@
+
 # BoWだけなら 404s
 work/kb.json: data/master06_content_mecab_annotated.json
 	ruby src/feature_extraction_from_kb.rb -t word_ids.tsv < $< > $@

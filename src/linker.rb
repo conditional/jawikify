@@ -2,10 +2,6 @@
 
 require 'json'
 require 'kyotocabinet'
-require 'logger'
-require 'optparse'
-
-params = ARGV.getopts("t:d:v:")
 
 
 class DisambiguateStrategyBase
@@ -16,7 +12,6 @@ end
 
 class MostFrequentDisambiguator < DisambiguateStrategyBase
   def initialize(kb_filename)
-    
   end
   def disambiguate(candidates, context, k_best=5)
     #p candidates
@@ -63,28 +58,37 @@ class Linker
   end
 end
 
-params = ARGV.getopts("c:k:f:v:")
-from = (params['f'] || 'ner').to_s
-cg_filename = (params['c'] || 'data/master06_candidates.kct') 
-#kb_filename = (params['k'] || 'data/master06_content_mecab_annotated.kch')
-kb_filename = (params['k'] || 'data/master06_content.kch')
-vocab_filaneme = (params['v'] || 'word_ids.tsv') 
 
-linker = Linker.new(cg_filename, kb_filename, MostFrequentDisambiguator)
-#disambiguate_strategy = 
-
-at_exit{
-  #linker.teardown()
-}
-
-while line=gets()
-  o = JSON.load(line)
-  o['ner']['linked'] = o['ner']['extracted'].dup
-
-  o['ner']['extracted'].each.with_index do |sentence, i|
-    sentence.each.with_index do |mention, j|
-      o['ner']['linked'][i][j] << linker.disambiguate(mention[0])
+if __FILE__ == $0
+  require 'logger'
+  require 'optparse'
+  
+  params = ARGV.getopts("t:d:v:")
+  
+  
+  params = ARGV.getopts("c:k:f:v:")
+  from = (params['f'] || 'ner').to_s
+  cg_filename = (params['c'] || 'data/master06_candidates.kct') 
+  #kb_filename = (params['k'] || 'data/master06_content_mecab_annotated.kch')
+  kb_filename = (params['k'] || 'data/master06_content.kch')
+  vocab_filaneme = (params['v'] || 'word_ids.tsv') 
+  
+  linker = Linker.new(cg_filename, kb_filename, MostFrequentDisambiguator)
+  #disambiguate_strategy = 
+  
+  at_exit{
+    #linker.teardown()
+  }
+  
+  while line=gets()
+    o = JSON.load(line)
+    o['ner']['linked'] = o['ner']['extracted'].dup
+    
+    o['ner']['extracted'].each.with_index do |sentence, i|
+      sentence.each.with_index do |mention, j|
+        o['ner']['linked'][i][j] << linker.disambiguate(mention[0])
+      end
     end
+    puts o.to_json
   end
-  puts o.to_json
 end
