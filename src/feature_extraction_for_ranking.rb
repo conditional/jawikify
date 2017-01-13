@@ -13,7 +13,7 @@ class StringSimilarity
   end
 
   def calc(_, mention, entity)
-    return  Levenshtein.similarity(mention, entity['entry']) 
+    return  Levenshtein.similarity(mention, entity['entry']).round(3)
   end
 end
 
@@ -22,6 +22,9 @@ class GlobalBoWSimilarity
   def initialize(idf_database)
     @idf_database = KyotoCabinet::DB::new
     @idf_database.open(idf_database, KyotoCabinet::DB::OREADER)
+    @cache_entity = {}
+    @cache_source = {}
+    @cache_sim    = {}
   end
   
   def idf(t)
@@ -31,9 +34,8 @@ class GlobalBoWSimilarity
     return 0.0 unless r
     return Oj.load(r)['idf'] || 0.0
   end
-  
-  def calc(source_document, _, entity)
-    
+
+  def source_representation(source_document)
     source = Hash.new(0.0)
     source_document['ner']['nemecab'].each do |sentence|
       sentence.each_line do |token|
@@ -41,13 +43,34 @@ class GlobalBoWSimilarity
         source[t] += idf(t)
       end
     end
-    
+    return source
+  end
+  
+  def entity_representation(entity)
     e = Hash.new(0.0)
     entity['abstract_mecab'].each_line do |token|
       t = token.split("\t").first
       e[t] += idf(t)
     end
-    return calc_cosine(source,e)
+    return e
+  end
+
+  def calc(source_document, _, entity)
+    unless @cache_source[source_document]
+      s = source_representation(source_document)
+      @cache_source[source_document] = s
+    else
+      s = @cache_source[source_document]
+    end
+
+    unless @cache_entity[entity]
+      e = entity_representation(entity)
+      @cache_entity[entity] = e
+    else
+      e = @cache_entity[entity]
+    end
+    
+    return calc_cosine(s,e)
   end
     
   # 内積
@@ -61,10 +84,13 @@ class GlobalBoWSimilarity
   
   # cosine
   def calc_cosine(s,e)
+    r = @cache_sim[[s,e]]
+    return r if r
     #p s,e
     s_norm = Math.sqrt(s.inject(0.0) {|sum, (k, v)| sum + v * v})
     e_norm = Math.sqrt(e.inject(0.0) {|sum, (k, v)| sum + v * v})
-    return dot(s,e) / s_norm * e_norm
+    @cache_sim[[s,e]] = (dot(s,e) / s_norm * e_norm).round(3)
+    return @cache_sim[[s,e]]
   end
   
 end
