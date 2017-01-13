@@ -27,6 +27,6 @@ end
 @logger.warn("loaded!!, db size: #{db.size}, number of document if #{cnt}")
 
 db.each do |k,v|
-  puts Oj.dump( { k: k, idf: Math.log(cnt / v) })
+  puts Oj.dump( { "k" =>  k, "idf" => Math.log(cnt / v) })
 end
 

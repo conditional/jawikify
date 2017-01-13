@@ -61,7 +61,7 @@ class GlobalBoWSimilarity
   
   # cosine
   def calc_cosine(s,e)
-    p s,e
+    #p s,e
     s_norm = Math.sqrt(s.inject(0.0) {|sum, (k, v)| sum + v * v})
     e_norm = Math.sqrt(e.inject(0.0) {|sum, (k, v)| sum + v * v})
     return dot(s,e) / s_norm * e_norm
@@ -71,7 +71,7 @@ end
 
 class EntityPopularity
   def calc(doc, mention, entity)
-    return entity['p_e_x']
+    return entity['link_from_N']
   end
 end
 
@@ -106,16 +106,18 @@ if __FILE__ == $0
       candidates =  @cg.lookup(mention['surface'])
       next unless candidates
       candidates['candidates'].each do |e|
+        # e: title => 
         ee = @kb.lookup(e['title'])
+        #p ee
         label = 2
-        if ee['title'] == mention['title']
+        if ee['entry'] == mention['title']
           label = 1
         end
         val = []
         metrics.each.with_index do |metric, i |
           val << [i+1, metric.calc(o, mention['surface'], ee)].join(":")
         end
-        puts [label, "qid:#{qid}", val.join(" ")].join(" ")
+        puts [label, "qid:#{qid}", val.join(" "), "#", mention['surface'], e['title']].join(" ")
       end
       qid += 1
     end
