@@ -55,7 +55,6 @@ data/charanda04.300.kch: data/charanda04.300.gz
 data/master06_content_mecab_annotated.kch: data/master06_content_mecab_annotated.json
 	cat $< | ruby src/compile_kb.rb -k entry -t $@
 
-#
 # 知識ベースから作った IDF データベース
 # about: 219.72s
 data/master06_content_mecab_annotated.idf.json: data/master06_content_mecab_annotated.json

@@ -3,6 +3,7 @@
 require 'json'
 require 'kyotocabinet'
 
+require_relative 'candiate_lookupper.rb'
 
 class DisambiguateStrategyBase
   def disambiguate(candidates, context)
@@ -31,22 +32,10 @@ class CosineSimDisambiguator < DisambiguateStrategyBase
   end
 end
 
-class CandidateLookuper
-  def initialize(cg_filename)
-    @cg = KyotoCabinet::DB::new
-    @cg.open(cg_filename, KyotoCabinet::DB::OREADER)
-  end
-  # nilを返すこともある
-  def lookup(mention)
-    candidates = JSON.load(@cg.get(mention))
-    return candidates
-  end
-end
-
 class Linker
   
   def initialize(cg_filename, kb_filename, strategy)
-    @cg = CandidateLookuper.new(cg_filename)
+    @cg = CandidateLookupper.new(cg_filename)
     @disambiguator = strategy.new(kb_filename)
   end
   
