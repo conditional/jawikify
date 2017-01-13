@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 
-require 'json'
+require 'oj'
 require 'kyotocabinet'
 
 
 class StringSimilarity
   require 'levenshtein'
-  module Levenshtein
+  module ::Levenshtein
     def self.similarity(str1, str2)
-      1 - normalized_distance(str1, str2)
+      1 - Levenshtein.normalized_distance(str1, str2)
     end
   end
 
   def calc(_, mention, entity)
-    return  Levenshtein.similarity(mention, entity['title']) 
+    return  Levenshtein.similarity(mention, entity['entry']) 
   end
 end
 
@@ -25,26 +25,29 @@ class GlobalBoWSimilarity
   end
   
   def idf(t)
-    r = @idf_database[t]
+    #p t
+    r = @idf_database.get(t)
+    #p r
     return 0.0 unless r
-    return JSON.load(r)['idf'] || 0.0
+    return Oj.load(r)['idf'] || 0.0
   end
   
   def calc(source_document, _, entity)
     
     source = Hash.new(0.0)
-    source_document['nemecab'].each do |sentence|
-      sentence.each do |token|
+    source_document['ner']['nemecab'].each do |sentence|
+      sentence.each_line do |token|
         t =  token.split("\t").first
         source[t] += idf(t)
       end
     end
     
     e = Hash.new(0.0)
-    entity['abstract_mecab'].each do |token|
+    entity['abstract_mecab'].each_line do |token|
       t = token.split("\t").first
       e[t] += idf(t)
     end
+    return calc_cosine(source,e)
   end
     
   # 内積
@@ -58,8 +61,9 @@ class GlobalBoWSimilarity
   
   # cosine
   def calc_cosine(s,e)
-    s_norm = Math.sqrt(s.injet(0.0) {|sum, (k, v)| sum + v * v})
-    e_norm = Math.sqrt(e.injet(0.0) {|sum, (k, v)| sum + v * v})
+    p s,e
+    s_norm = Math.sqrt(s.inject(0.0) {|sum, (k, v)| sum + v * v})
+    e_norm = Math.sqrt(e.inject(0.0) {|sum, (k, v)| sum + v * v})
     return dot(s,e) / s_norm * e_norm
   end
   
@@ -74,33 +78,42 @@ end
 if __FILE__ == $0
   require 'logger'
   require 'optparse'
-  params = ARGV.getopts("k:i:")
+  params = ARGV.getopts("k:i:c:")
   args={}
-  # 知識ベース(mention -> candidates)
-  args['kb_filename']       = params['k'] || 'word_ids.tsv'
+  # 知識ベース title -> entity detail
+  args['kb_filename']       = params['k'] || 'work/kb.kch'
   # IDF データベース
-  args['idf_filename']      = params['i'] || 'word_ids.tsv'
-  metrics = []
+  args['idf_filename']      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'
+  # mention -> [titles]
+  args['cg_filename']       = params['c'] || 'data/master06_candidates.kct'
   
+  metrics = []
   metrics << GlobalBoWSimilarity.new(args['idf_filename'])
   metrics << StringSimilarity.new()
   metrics << EntityPopularity.new()
   
+  require_relative 'candiate_lookupper.rb'
+  @cg = CandidateLookupper.new(args['cg_filename'])
+  @kb = CandidateLookupper.new(args['kb_filename'])
+  
   qid = 0
   while line = gets()
-    o = JSON.laod(line)
+    o = Oj.load(line)
     # 文書のベクトル表現
-    document_representation = create_tf_idf_vector(o)
-    o['mention'].each do |mention|
-      
-      candidate(mention).each do |e|
+    o['ner']['offsets'].each do |mention|
+      next if mention['tag'] == 'text'
+      #p mention
+      candidates =  @cg.lookup(mention['surface'])
+      next unless candidates
+      candidates['candidates'].each do |e|
+        ee = @kb.lookup(e['title'])
         label = 2
-        if e == mention.correct
+        if ee['title'] == mention['title']
           label = 1
         end
         val = []
-        metrics.each do |metric|
-          val << metric.calc(o, m, e)
+        metrics.each.with_index do |metric, i |
+          val << [i+1, metric.calc(o, mention['surface'], ee)].join(":")
         end
         puts [label, "qid:#{qid}", val.join(" ")].join(" ")
       end

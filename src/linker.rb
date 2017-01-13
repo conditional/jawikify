@@ -2,7 +2,6 @@
 
 require 'json'
 require 'kyotocabinet'
-
 require_relative 'candiate_lookupper.rb'
 
 class DisambiguateStrategyBase
@@ -51,9 +50,6 @@ end
 if __FILE__ == $0
   require 'logger'
   require 'optparse'
-  
-  params = ARGV.getopts("t:d:v:")
-  
   
   params = ARGV.getopts("c:k:f:v:")
   from = (params['f'] || 'ner').to_s
