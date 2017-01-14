@@ -17,7 +17,7 @@ DIR_DATA = data
 DIR_MODEL = model
 
 BAR = --bar
-NUM_OF_PARALLEL = -j 12
+NUM_OF_PARALLEL = -j 20
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -126,7 +126,18 @@ models/md.model.500: $(DIR_WORK)/all.ff
 models/md.model.200: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@.200 -p max_iterations=200 $< > models/md.log.200
 
-
+# 87.51s
+mention_detection: models/md.model.500.500
+	ls data/jawikify_20160310_release/*wikified.xml |\
+	parallel $(PARALLEL_OPTIONS) "cat {} |\
+	ruby src/md_to_json.rb | ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
+	ruby src/md_feature_extraction.rb -t features |\
+	ruby src/chunker.rb -m $< -f features -t chunk |\
+	ruby src/extractor.rb |\
+	ruby src/annotate_gold_chunk.rb -t gold |\
+	tee  $(DIR_WORK)/result_json/{/.}.mention_annotated.json |\
+	ruby src/evaluate/dump_chunk_result.rb  -g gold -p chunk > results/{/.}.conll"
+	cat results/*.conll | perl src/conlleval_detail.pl
 
 test.result: work/chunking.model.all
 	cat test2.txt | ruby src/wrap_json.rb |\
