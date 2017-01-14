@@ -29,6 +29,9 @@ FILELIST_DEV = GSK_filelist.dev
 GSK_filelist:
 	ls /home/work/data/GSK/GSK2014-A/gsk-ene-1.1/bccwj/xml/*/*.xml | shuf > $@
 
+GSK_filelist2:
+# not working
+	ls ./data/gsk-ene-1.1/bccwj/xml/{OC,OW,OY,PB,PM}/*.xml | shuf > $@
 
 # 候補生成のためのデータベース作成
 data/master06_candidates.json: data/master06_content.json
@@ -86,7 +89,13 @@ md_to_json: GSK_filelist
 	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
+# 12並列で 90秒
+md_to_json2: GSK_filelist2
+	rm -f $(DIR_WORK)/json/*.json
+	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
+         ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
+# 12並列で 90秒
 md_feature_extraction:
 	mkdir -p $(DIR_WORK)/crfsuite/
 	rm -f $(DIR_WORK)/crfsuite/*.f
@@ -94,11 +103,30 @@ md_feature_extraction:
 	ls $(DIR_WORK)/json/*.json | parallel $(PARALLEL_OPTIONS) "cat {} |\
          ruby src/md_feature_extraction.rb > $(DIR_WORK)/crfsuite/{/}.f 2> $(DIR_LOG)/{/}.fe.log"
 
-work/all.ff:
+#work/all.ff:
+#	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+
+# obsolute
+work20170113/all.ff:
 	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
-work/chunking.model.all: $(DIR_WORK)/all.ff
-	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
+
+models/md.model: $(DIR_WORK)/all.ff
+	crfsuite learn -m $@ $< > models/md.log
+
+models/cross.log: $(DIR_WORK)/all.ff
+	crfsuite learn -x -g 5 $< > $@
+
+models/md.model.1000: $(DIR_WORK)/all.ff
+	crfsuite learn -m $@.1000 -p max_iterations=1000 $< > models/md.log.1000
+
+models/md.model.500: $(DIR_WORK)/all.ff
+	crfsuite learn -m $@.500 -p max_iterations=500 $< > models/md.log.500
+
+models/md.model.200: $(DIR_WORK)/all.ff
+	crfsuite learn -m $@.200 -p max_iterations=200 $< > models/md.log.200
+
+
 
 test.result: work/chunking.model.all
 	cat test2.txt | ruby src/wrap_json.rb |\
@@ -110,12 +138,11 @@ test.result: work/chunking.model.all
 html_visualize:
 	cat test3.txt | bash analyse.sh | ruby src/to_html.rb > ~/public_html/jawikify_proto/index.html
 
-
 #
 # evaluation
 #
 crf_filelist:
-	ls work/crfsuite/*.f | shuf > $@
+	ls workqq/crfsuite/*.f | shuf > $@
 	head -n 1500 $@ > $@.train
 	head -n 1750 $@ | tail -n 250 > $@.dev
 	head -n 1982 $@ | tail -n 232 > $@.test
@@ -131,3 +158,4 @@ work/test.ff: crf_filelist.test
 
 work/chunking.model.all: work/all.ff
 	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
+

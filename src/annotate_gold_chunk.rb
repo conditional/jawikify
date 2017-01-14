@@ -11,7 +11,9 @@ require 'json'
 require_relative 'label_abstraction.rb'
 require 'optparse'
 params = ARGV.getopts("h:f:t:")
-@generalizer = TopLevelAbstractor.new(params["h"])
+
+list_name = params["h"] || "data/list-Name20161220.txt"
+@generalizer = TopLevelAbstractor.new(list_name)
 
 @from = (params['f'] || 'nemecab')
 @to   = (params['t'] || 'chunk')

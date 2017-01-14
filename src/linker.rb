@@ -68,7 +68,6 @@ if __FILE__ == $0
   while line=gets()
     o = JSON.load(line)
     o['ner']['linked'] = o['ner']['extracted'].dup
-    
     o['ner']['extracted'].each.with_index do |sentence, i|
       sentence.each.with_index do |mention, j|
         o['ner']['linked'][i][j] << linker.disambiguate(mention[0])
