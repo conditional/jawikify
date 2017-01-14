@@ -6,17 +6,18 @@
 NUM_OF_FOLD = 5
 PARAM_TRAIN =
 #DRY = --dry-run
-BAR = --bar
+
 
 #
 # misc
 #
-DIR_WORK = work
+DIR_WORK = work20170113
 DIR_LOG  = log
 DIR_DATA = data
 DIR_MODEL = model
 
-NUM_OF_PARALLEL = -j 20
+BAR = --bar
+NUM_OF_PARALLEL = -j 12
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -85,7 +86,8 @@ md_to_json: GSK_filelist
 	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
-feature_extraction:
+
+md_feature_extraction:
 	mkdir -p $(DIR_WORK)/crfsuite/
 	rm -f $(DIR_WORK)/crfsuite/*.f
 	rm -f $(DIR_LOG)/*.fe.log
@@ -93,9 +95,9 @@ feature_extraction:
          ruby src/md_feature_extraction.rb > $(DIR_WORK)/crfsuite/{/}.f 2> $(DIR_LOG)/{/}.fe.log"
 
 work/all.ff:
-	cat work/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
-work/chunking.model.all: work/all.ff
+work/chunking.model.all: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
 
 test.result: work/chunking.model.all

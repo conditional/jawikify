@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # feature_extraction.rb
-#
 
 require 'json'
 require 'optparse'
@@ -148,16 +147,16 @@ params = ARGV.getopts("ot:")
 idx = 0
 
 @fe.register( Surface.new() )
-#@fe.register( Char.new() )
-#@fe.register( LastChar.new() )
-#@fe.register( FirstChar.new() )
-#@fe.register( MojiType.new() )
+@fe.register( Char.new() )
+@fe.register( LastChar.new() )
+@fe.register( FirstChar.new() )
+@fe.register( MojiType.new() )
 
 #if parmas["g"]  
 #end
 
 while line = gets()
-  #@logger.warn idx if idx % 100 == 0
+  @logger.warn idx if idx % 100 == 0
   o = JSON.parse(line)
   # 素性抽出したものをjsonに埋め込む
   if params["t"]
