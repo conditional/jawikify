@@ -127,7 +127,7 @@ models/md.model.200: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@.200 -p max_iterations=200 $< > models/md.log.200
 
 # 87.51s
-mention_detection: models/md.model.500.500
+mention_detection: models/md.model
 	ls data/jawikify_20160310_release/*wikified.xml |\
 	parallel $(PARALLEL_OPTIONS) "cat {} |\
 	ruby src/md_to_json.rb | ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
