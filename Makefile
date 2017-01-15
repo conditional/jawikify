@@ -1,4 +1,5 @@
 # jawikify
+SHELL := /usr/bin/zsh
 
 #
 # execute options
@@ -17,7 +18,7 @@ DIR_DATA = data
 DIR_MODEL = model
 
 BAR = --bar
-NUM_OF_PARALLEL = -j 20
+NUM_OF_PARALLEL = -j 8
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -138,6 +139,27 @@ mention_detection: models/md.model
 	tee  $(DIR_WORK)/result_json/{/.}.mention_annotated.json |\
 	ruby src/evaluate/dump_chunk_result.rb  -g gold -p chunk > results/{/.}.conll"
 	cat results/*.conll | perl src/conlleval_detail.pl
+
+linker_feature_extraction_preprocess:
+	seq 339 |\
+	parallel $(PARALLEL_OPTIONS) "\
+	cat data/jawikify_work/{}.xml | ruby src/md_to_json.rb |\
+	ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
+	ruby src/md_feature_extraction.rb -t features |\
+	ruby src/chunker.rb -m models/md.model -f features -t chunk |\
+	ruby src/extractor.rb |\
+	ruby src/annotate_gold_chunk.rb -t gold > $(DIR_WORK)/jawikify_aux/{}.json "
+
+linker_feature_extraction:
+	seq 339 |\
+	parallel $(PARALLEL_OPTIONS) "\
+	cat $(DIR_WORK)/jawikify_aux/{}.json | ruby src/feature_extraction_for_ranking.rb -q {}000 \
+	> $(DIR_WORK)/svm_rank/{}.svm"
+
+linker_train_test_split:
+#	seq 1 272 | parallel "$(DIR_WORK)/svm_rank/{}.svm"
+	cat work20170113/svm_rank/<1-272>.svm > train.svm
+	cat work20170113/svm_rank/<273-339>.svm > test.svm
 
 test.result: work/chunking.model.all
 	cat test2.txt | ruby src/wrap_json.rb |\

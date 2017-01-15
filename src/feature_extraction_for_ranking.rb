@@ -12,8 +12,8 @@ class StringSimilarity
     end
   end
 
-  def calc(_, mention, entity)
-    return  Levenshtein.similarity(mention, entity['entry']).round(3)
+  def calc(_, mention, entity, _)
+    return  Levenshtein.similarity(mention, entity['entry'])
   end
 end
 
@@ -55,7 +55,7 @@ class GlobalBoWSimilarity
     return e
   end
 
-  def calc(source_document, _, entity)
+  def calc(source_document, _, entity, _)
     unless @cache_source[source_document]
       s = source_representation(source_document)
       @cache_source[source_document] = s
@@ -89,22 +89,26 @@ class GlobalBoWSimilarity
     #p s,e
     s_norm = Math.sqrt(s.inject(0.0) {|sum, (k, v)| sum + v * v})
     e_norm = Math.sqrt(e.inject(0.0) {|sum, (k, v)| sum + v * v})
-    @cache_sim[[s,e]] = (dot(s,e) / s_norm * e_norm).round(3)
+    @cache_sim[[s,e]] = (dot(s,e) / s_norm * e_norm)
     return @cache_sim[[s,e]]
   end
   
 end
 
 class EntityPopularity
-  def calc(doc, mention, entity)
-    return entity['link_from_N']
+  def calc(doc, mention, entity, e)
+    #p mention
+    #p entity
+    #return entity['link_from_N']
+    return e['p_e_x']
   end
 end
 
 if __FILE__ == $0
   require 'logger'
   require 'optparse'
-  params = ARGV.getopts("k:i:c:")
+  require_relative 'label_abstraction.rb'
+  params = ARGV.getopts("k:i:c:q:h:")
   args={}
   # 知識ベース title -> entity detail
   args['kb_filename']       = params['k'] || 'work/kb.kch'
@@ -112,6 +116,11 @@ if __FILE__ == $0
   args['idf_filename']      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'
   # mention -> [titles]
   args['cg_filename']       = params['c'] || 'data/master06_candidates.kct'
+  list_name = params["h"] || "data/list-Name20161220.txt"
+  @generalizer = TopLevelAbstractor.new(list_name)
+  
+  # qid始点
+  qid                       = (params['q'] || 0).to_i
   
   metrics = []
   metrics << GlobalBoWSimilarity.new(args['idf_filename'])
@@ -122,26 +131,29 @@ if __FILE__ == $0
   @cg = CandidateLookupper.new(args['cg_filename'])
   @kb = CandidateLookupper.new(args['kb_filename'])
   
-  qid = 0
+  #qid = 0
   while line = gets()
     o = Oj.load(line)
     # 文書のベクトル表現
     o['ner']['offsets'].each do |mention|
       next if mention['tag'] == 'text'
+      abs_tag = @generalizer.generalize_category(mention['tag'])
+      next if abs_tag == "O"
       #p mention
       candidates =  @cg.lookup(mention['surface'])
       next unless candidates
       candidates['candidates'].each do |e|
+        #p e
         # e: title => 
         ee = @kb.lookup(e['title'])
         #p ee
-        label = 2
+        label = 0
         if ee['entry'] == mention['title']
           label = 1
         end
         val = []
         metrics.each.with_index do |metric, i |
-          val << [i+1, metric.calc(o, mention['surface'], ee)].join(":")
+          val << [i+1, metric.calc(o, mention['surface'], ee, e)].join(":")
         end
         puts [label, "qid:#{qid}", val.join(" "), "#", mention['surface'], e['title']].join(" ")
       end

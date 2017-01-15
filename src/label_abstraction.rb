@@ -45,6 +45,13 @@ class TopLevelAbstractor < NERTagAbstractor
     return "O" if top == "O"
     return [bio, top].join("-")
   end
+  def generalize_category(orig)
+    return "text" if orig == "text"
+    return "O" if orig == "O"
+    top = top_level_tag(orig)
+    return "O" if top == "O"
+    return top
+  end
 end
 
 if __FILE__ == $0
