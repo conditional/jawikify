@@ -4,7 +4,7 @@
 class IOBDecoder
   def initialize()
     @stack = []
-    @type  = nil
+    @type  = "NONE"
     @extracted = []
   end
   def flush()
@@ -24,9 +24,9 @@ class IOBDecoder
       @stack << token
     elsif tag == "I"
       @stack << token
-    else # O 
+    else # O
       @extracted << self.flush() if @stack.size != 0
-      @type = nil
+      @type = "NONE"
     end
   end
   def extracted

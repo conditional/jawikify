@@ -103,7 +103,6 @@ if __FILE__ == $0
     end
   end 
   
-  
   #  o['ner']['linked'] = o['ner']['extracted'].dup
   #  o['ner']['extracted'].each.with_index do |sentence, i|
   #    sentence.each.with_index do |mention, j|

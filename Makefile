@@ -134,8 +134,10 @@ mention_detection: models/md.model
 	ruby src/md_to_json.rb | ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
 	ruby src/md_feature_extraction.rb -t features |\
 	ruby src/chunker.rb -m $< -f features -t chunk |\
-	ruby src/extractor.rb |\
 	ruby src/annotate_gold_chunk.rb -t gold |\
+	tee  $(DIR_WORK)/result_json/{/.}.chunk_annotated.json |\
+	ruby src/extractor.rb -f gold -t gold_extracted |\
+	ruby src/extractor.rb -f chunk -t extracted |\
 	tee  $(DIR_WORK)/result_json/{/.}.mention_annotated.json |\
 	ruby src/evaluate/dump_chunk_result.rb  -g gold -p chunk > results/{/.}.conll"
 	cat results/*.conll | perl src/conlleval_detail.pl
