@@ -24,6 +24,7 @@ class IOBDecoder
       @stack << token
     elsif tag == "I"
       @stack << token
+      @type = t.split("-")[1] if @type == "NONE"
     else # O
       @extracted << self.flush() if @stack.size != 0
       @type = "NONE"

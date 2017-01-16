@@ -156,7 +156,7 @@ idx = 0
 #end
 
 while line = gets()
-  @logger.warn idx if idx % 100 == 0
+  #@logger.warn idx if idx % 100 == 0
   o = JSON.parse(line)
   # 素性抽出したものをjsonに埋め込む
   if params["t"]

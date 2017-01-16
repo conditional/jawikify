@@ -75,7 +75,9 @@ if __FILE__ == $0
   
   params = ARGV.getopts("c:k:f:v:m:t:")
   
-  from = (params['f'] || 'ner').to_s
+  from = (params['f'] || 'extracted').to_s
+  to   = (params['t'] || 'ner').to_s
+  
   cg_filename = (params['c'] || 'data/master06_candidates.kct') 
   #kb_filename = (params['k'] || 'data/master06_content_mecab_annotated.kch')
   kb_filename = (params['k'] || 'data/master06_content.kch')
@@ -85,7 +87,7 @@ if __FILE__ == $0
   #disambiguate_strategy = 
   
   model_filename = (params['m'] || 'models/linker.model')
-  TH = (params['t'] || 0.0).to_f
+  TH = (params['s'] || 0.0).to_f
   
   at_exit{
     #linker.teardown()
@@ -99,7 +101,9 @@ if __FILE__ == $0
     # o['ner']['chunk']
     # o['ner']['gold']
     o['ner'][@from].each do |sentence|
-      sentence.each do |
+      sentence.each do |mention|
+        
+      end
     end
   end 
   
