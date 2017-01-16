@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-require 'json'
-require 'optparse'
 
 class IOBDecoder
   def initialize()
@@ -36,17 +34,26 @@ class IOBDecoder
   end
 end
 
-while line = gets()
-  o = JSON.load(line.chomp)
-  o["ner"]["extracted"] = []
-  o["ner"]["mecab"].each.with_index do |sentence, idx|
-    d = IOBDecoder.new()
-    sentence.each_line.with_index do |token, jdx|
-      #p token
-      t = o["ner"]["chunk"][idx][jdx]
-      d.decode(t, token.split("\t").first, idx, jdx)
+if __FILE__ == $0
+  require 'json'
+  require 'optparse'
+  params = ARGV.getopts("f:t:")
+  
+  # chunk or gold etc
+  @from = (params['f'] || 'chunk').to_s
+  @to   = (params['t'] || 'extracted').to_s
+  
+  while line = gets()
+    o = JSON.load(line.chomp)
+    o["ner"][@to] = []
+    o["ner"]["mecab"].each.with_index do |sentence, idx|
+      d = IOBDecoder.new()
+      sentence.each_line.with_index do |token, jdx|
+        t = o["ner"][@from][idx][jdx]
+        d.decode(t, token.split("\t").first, idx, jdx)
+      end
+      o["ner"][@to]  << d.extracted
     end
-    o["ner"]["extracted"]  << d.extracted
+    puts o.to_json
   end
-  puts o.to_json
 end
