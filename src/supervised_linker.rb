@@ -47,7 +47,6 @@ class Linker
   end
 end
 
-
 class LinkerModel
   def initialize(weight_filename, idf_filename)
     open(weight_filename) do |f|
@@ -63,8 +62,9 @@ class LinkerModel
 
   def calc_score(doc, mention, entity, e)
     sum = 0.0
+    sum += @weights[i+1]
     @metrics.each.with_index do |metric, i|
-      sum += @weights[i] * metric.calc(doc, mention, entity, e)
+      sum += @weights[i+1] * metric.calc(doc, mention, entity, e)
     end
     return sum
   end

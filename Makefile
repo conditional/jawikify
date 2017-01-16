@@ -12,13 +12,13 @@ PARAM_TRAIN =
 #
 # misc
 #
-DIR_WORK = work20170113
+DIR_WORK = work20170117
 DIR_LOG  = log
 DIR_DATA = data
 DIR_MODEL = model
 
 BAR = --bar
-NUM_OF_PARALLEL = -j 8
+NUM_OF_PARALLEL = -j 12
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -33,6 +33,10 @@ GSK_filelist:
 GSK_filelist2:
 # not working
 	ls ./data/gsk-ene-1.1/bccwj/xml/{OC,OW,OY,PB,PM}/*.xml | shuf > $@
+
+GSK_filelist_with_PN200:
+	ls ./data/gsk-ene-1.1/bccwj/xml/{OC,OW,OY,PB,PM}/*.xml | shuf > $@
+	ls ./data/gsk-ene-1.1/bccwj/xml/PN/*.xml | head -n 200| shuf >> $@
 
 # 候補生成のためのデータベース作成
 data/master06_candidates.json: data/master06_content.json
@@ -97,8 +101,17 @@ md_to_json2: GSK_filelist2
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
 # 12並列で 90秒
-md_feature_extraction:
+md_to_json_with_PN200: GSK_filelist_with_PN200
+	mkdir -p $(DIR_WORK)/json/
+	touch $(DIR_WORK)/json/a.json
+	rm -f $(DIR_WORK)/json/*.json
+	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
+         ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
+
+# 12並列で 90秒
+md_feature_extraction: 
 	mkdir -p $(DIR_WORK)/crfsuite/
+	touch $(DIR_WORK)/crfsuite/a.f
 	rm -f $(DIR_WORK)/crfsuite/*.f
 	rm -f $(DIR_LOG)/*.fe.log
 	ls $(DIR_WORK)/json/*.json | parallel $(PARALLEL_OPTIONS) "cat {} |\
@@ -111,6 +124,8 @@ md_feature_extraction:
 work20170113/all.ff:
 	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
+work20170117/all.ff:
+	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
 models/md.model: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@ $< > models/md.log
