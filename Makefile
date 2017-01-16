@@ -158,6 +158,20 @@ linker_feature_extraction:
 	cat $(DIR_WORK)/jawikify_aux/{}.json | ruby src/feature_extraction_for_ranking.rb -q {}000 \
 	> $(DIR_WORK)/svm_rank/{}.svm"
 
+test_linker:
+	ls $(DIR_WORK)/result_json/*-wikified.mention_annotated.json |\
+	parallel $(PARALLEL_OPTIONS) "cat {} |\
+	ruby src/supervised_linker.rb -f gold_extracted -t gold_linked |\
+	ruby src/supervised_linker.rb -f extracted -t linked > work20170113/result/{/.}.json"
+
+evaluate_linker:
+	cat $(DIR_WORK)/result/*.json |\
+	ruby src/evaluate/eval_linked_entities.rb -p linked > $(DIR_WORK)/result/summary
+	cat $(DIR_WORK)/result/*.json |\
+	ruby src/evaluate/eval_linked_entities.rb -p gold_linked > $(DIR_WORK)/result/summary.gold
+	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary
+	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary.gold
+
 linker_train_test_split:
 #	seq 1 272 | parallel "$(DIR_WORK)/svm_rank/{}.svm"
 	cat work20170113/svm_rank/<1-272>.svm > train.svm
