@@ -49,11 +49,12 @@ end
 
 
 class LinkerModel
-  def initialzie(weight_filename, idf_filename)
-    open(filename) do |f|
+  def initialize(weight_filename, idf_filename)
+    open(weight_filename) do |f|
       l = f.gets()
       @weights = l.split(/\s/).map(&:to_f)
     end
+    #p @weights
     @metrics = []
     @metrics << GlobalBoWSimilarity.new(idf_filename)
     @metrics << StringSimilarity.new()
@@ -62,7 +63,7 @@ class LinkerModel
 
   def calc_score(doc, mention, entity, e)
     sum = 0.0
-    @metrics.each.with_index do |m, i|
+    @metrics.each.with_index do |metric, i|
       sum += @weights[i] * metric.calc(doc, mention, entity, e)
     end
     return sum
@@ -72,39 +73,57 @@ end
 if __FILE__ == $0
   require 'logger'
   require 'optparse'
+
+  at_exit{ #linker.teardown() 
+  }
   
   params = ARGV.getopts("c:k:f:v:m:t:")
   
-  from = (params['f'] || 'extracted').to_s
-  to   = (params['t'] || 'ner').to_s
+  @from = (params['f'] || 'extracted').to_s
+  @to   = (params['t'] || 'linked').to_s
   
   cg_filename = (params['c'] || 'data/master06_candidates.kct') 
   #kb_filename = (params['k'] || 'data/master06_content_mecab_annotated.kch')
-  kb_filename = (params['k'] || 'data/master06_content.kch')
-  vocab_filaneme = (params['v'] || 'word_ids.tsv') 
+  kb_filename       = params['k'] || 'work/kb.kch'
   
-  linker = Linker.new(cg_filename, kb_filename, MostFrequentDisambiguator)
+  #linker = Linker.new(cg_filename, kb_filename, MostFrequentDisambiguator)
   #disambiguate_strategy = 
   
-  model_filename = (params['m'] || 'models/linker.model')
+  idf_filename      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'  
+  model_filename    = (params['m'] || 'models/linker.model')
   TH = (params['s'] || 0.0).to_f
   
-  at_exit{
-    #linker.teardown()
-  }
-  
+  require_relative 'candiate_lookupper.rb'
+  @cg = CandidateLookupper.new(cg_filename)
+  @kb = CandidateLookupper.new(kb_filename)
   linker = LinkerModel.new(model_filename, idf_filename)
   
   while line=gets()
     o = JSON.load(line)
+    o['ner'][@to] = []
     # o['ner']['extracted']
     # o['ner']['chunk']
     # o['ner']['gold']
     o['ner'][@from].each do |sentence|
+      linked = []
       sentence.each do |mention|
-        
+        surface = mention.first
+        candidates =  @cg.lookup(surface)
+        #p candidates
+        unless candidates
+          linked  << {"surface" => surface, "title" => nil, "score" => 0.0}
+          next
+        end
+        scores = candidates['candidates'].map{ |e|
+          ee = @kb.lookup(e['title'])
+          s = linker.calc_score(o, surface, ee, e)
+          {"surface" => surface, "title" => ee['entry'], "score" => s}
+        }
+        linked << scores.max_by {|e| e['score'] }
       end
+      o['ner'][@to] << linked
     end
+    puts o.to_json
   end 
   
   #  o['ner']['linked'] = o['ner']['extracted'].dup
