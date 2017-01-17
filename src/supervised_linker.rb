@@ -64,7 +64,7 @@ class LinkerModel
     sum = 0.0
     sum += @weights[0]
     @metrics.each.with_index do |metric, i|
-      sum += @weights[i+1] * metric.calc(doc, mention, entity, e)
+      sum += (@weights[i+1] || 0.0) * metric.calc(doc, mention, entity, e)
     end
     return sum
   end

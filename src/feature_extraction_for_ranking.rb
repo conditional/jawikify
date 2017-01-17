@@ -25,14 +25,19 @@ class GlobalBoWSimilarity
     @cache_entity = {}
     @cache_source = {}
     @cache_sim    = {}
+    @cache_idf    = {}
   end
   
   def idf(t)
-    #p t
+    if @cache_idf[t]
+      return @cache_idf[t]
+    end
+    
     r = @idf_database.get(t)
-    #p r
     return 0.0 unless r
-    return Oj.load(r)['idf'] || 0.0
+    v = Oj.load(r)['idf']
+    @cache_idf[t] = v
+    return v
   end
 
   def source_representation(source_document)

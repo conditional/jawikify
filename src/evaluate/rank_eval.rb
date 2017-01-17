@@ -17,9 +17,12 @@ correct_nonnil = 0
 miss_nonnil    = 0
 
 # qidでグループ化して、正しいエンティティが紐付いていたらスコアを足す
-arr.group_by{|elem|
-  elem[3]
-}.each do |k,q|
+groups = arr.group_by{|elem|
+  #p elem
+  elem[2]
+}
+p groups.length
+groups.each do |k,q|
 
   # 全エンティティに対して低いスコアがある
   # nilの場合
