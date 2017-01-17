@@ -6,6 +6,9 @@ require 'kyotocabinet'
 
 class StringSimilarity
   require 'levenshtein'
+  def initialize()
+    @cache = {}
+  end
   module ::Levenshtein
     def self.similarity(str1, str2)
       1 - Levenshtein.normalized_distance(str1, str2)
@@ -13,7 +16,12 @@ class StringSimilarity
   end
 
   def calc(_, mention, entity, _)
-    return  Levenshtein.similarity(mention, entity['entry'])
+    str = [mention,entity['entity']].join("::")
+    if @cache[str]
+      return @cache[str]
+    end
+    @cache[str] = Levenshtein.similarity(mention, entity['entry'])
+    return @cache[str]  #Levenshtein.similarity(mention, entity['entry'])
   end
 end
 

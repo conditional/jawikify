@@ -59,7 +59,7 @@ class LinkerModel
     @metrics << StringSimilarity.new()
     @metrics << EntityPopularity.new()
   end
-
+  
   def calc_score(doc, mention, entity, e)
     sum = 0.0
     sum += @weights[0]
@@ -77,7 +77,7 @@ if __FILE__ == $0
   at_exit{ #linker.teardown() 
   }
   
-  params = ARGV.getopts("c:k:f:v:m:t:")
+  params = ARGV.getopts("c:k:f:v:m:t:T:")
   
   @from = (params['f'] || 'extracted').to_s
   @to   = (params['t'] || 'linked').to_s
@@ -91,7 +91,8 @@ if __FILE__ == $0
   
   idf_filename      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'  
   model_filename    = (params['m'] || 'models/linker.model')
-  TH = (params['s'] || 0.0).to_f
+
+  TH = (params['T'] || 0.0).to_f
   
   require_relative 'candiate_lookupper.rb'
   @cg = CandidateLookupper.new(cg_filename)

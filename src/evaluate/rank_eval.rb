@@ -52,6 +52,7 @@ end
 miss = miss_nonnil + miss_nil
 correct = correct_nonnil + correct_nil
 
+puts ["TH: ", TH].join("\t")
 puts ["all: ",correct, miss, correct / (correct+miss).to_f].join("\t")
 puts ["nil: ",correct_nil, miss_nil, correct_nil / (correct_nil+miss_nil).to_f].join("\t")
 puts ["nnil: ", correct_nonnil, miss_nonnil, correct_nonnil / (correct_nonnil+miss_nonnil).to_f].join("\t")
