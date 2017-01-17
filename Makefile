@@ -12,13 +12,13 @@ PARAM_TRAIN =
 #
 # misc
 #
-DIR_WORK = work20170117
+DIR_WORK = work20170117_all
 DIR_LOG  = log
 DIR_DATA = data
 DIR_MODEL = model
 
 BAR = --bar
-NUM_OF_PARALLEL = -j 12
+NUM_OF_PARALLEL = -j 8
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -90,12 +90,16 @@ work/kb.kch: work/kb.json
 #	head -n 1982 $< | tail -n 232  > $@
 
 md_to_json: GSK_filelist
+	mkdir -p $(DIR_WORK)/json/
+	touch $(DIR_WORK)/json/a.json
 	rm -f $(DIR_WORK)/json/*.json
 	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
 
 # 12並列で 90秒
 md_to_json2: GSK_filelist2
+	mkdir -p $(DIR_WORK)/json/
+	touch $(DIR_WORK)/json/a.json
 	rm -f $(DIR_WORK)/json/*.json
 	cat $< | /home/matsuda/bin/parallel $(PARALLEL_OPTIONS) "ruby src/md_to_json.rb {} |\
          ruby src/apply_mecab.rb | ruby src/annotate_offset.rb > $(DIR_WORK)/json/{/}.json"
@@ -124,8 +128,19 @@ md_feature_extraction:
 work20170113/all.ff:
 	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
+# 42s
 work20170117/all.ff:
 	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+
+#[charanda01:~/workspace/jawikify] make models/md.model.e
+#crfsuite learn -m models/md.model.e work20170117/all.ff > models/md.log
+#-------------------------------------------------------------
+#    Job Name.        :make models/md.model.e
+#    Elapsed Time.    :7457.88s
+#    (User: 7435.30s, Kernel: 17.70s, CPU Usage: 99%)
+#-------------------------------------------------------------
+models/md.model.e: $(DIR_WORK)/all.ff
+	crfsuite learn -m $@ $< > models/md.log
 
 models/md.model: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@ $< > models/md.log
@@ -142,13 +157,31 @@ models/md.model.500: $(DIR_WORK)/all.ff
 models/md.model.200: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@.200 -p max_iterations=200 $< > models/md.log.200
 
+MODEL=models/md.model.e
+mention_detection_evaluate:
+	rm -f results/*.conll
+	mkdir -p $(DIR_WORK)/result_json/
+	ls data/jawikify_20160310_release/*wikified.xml | tail -n 139 > md_evaluate_filelist.txt
+	cat md_evaluate_filelist.txt | parallel $(PARALLEL_OPTIONS) "cat {} |\
+	ruby src/md_to_json.rb | ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
+	ruby src/md_feature_extraction.rb -t features |\
+	ruby src/chunker.rb -m $(MODEL) -f features -t chunk |\
+	ruby src/annotate_gold_chunk.rb -t gold |\
+	tee  $(DIR_WORK)/result_json/{/.}.chunk_annotated.json |\
+	ruby src/extractor.rb -f gold -t gold_extracted |\
+	ruby src/extractor.rb -f chunk -t extracted |\
+	tee  $(DIR_WORK)/result_json/{/.}.mention_annotated.json |\
+	ruby src/evaluate/dump_chunk_result.rb  -g gold -p chunk > results/{/.}.conll"
+	cat results/*.conll | perl src/conlleval_detail.pl
+
 # 87.51s
-mention_detection: models/md.model
+mention_detection:
+	mkdir -p $(DIR_WORK)/result_json
 	ls data/jawikify_20160310_release/*wikified.xml |\
 	parallel $(PARALLEL_OPTIONS) "cat {} |\
 	ruby src/md_to_json.rb | ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
 	ruby src/md_feature_extraction.rb -t features |\
-	ruby src/chunker.rb -m $< -f features -t chunk |\
+	ruby src/chunker.rb -m $(MODEL) -f features -t chunk |\
 	ruby src/annotate_gold_chunk.rb -t gold |\
 	tee  $(DIR_WORK)/result_json/{/.}.chunk_annotated.json |\
 	ruby src/extractor.rb -f gold -t gold_extracted |\
@@ -158,26 +191,39 @@ mention_detection: models/md.model
 	cat results/*.conll | perl src/conlleval_detail.pl
 
 linker_feature_extraction_preprocess:
+	ruby rename_files.rb
+	mkdir -p $(DIR_WORK)/jawikify_aux/
 	seq 339 |\
 	parallel $(PARALLEL_OPTIONS) "\
 	cat data/jawikify_work/{}.xml | ruby src/md_to_json.rb |\
 	ruby src/apply_mecab.rb | ruby src/annotate_offset.rb |\
 	ruby src/md_feature_extraction.rb -t features |\
-	ruby src/chunker.rb -m models/md.model -f features -t chunk |\
+	ruby src/chunker.rb -m $(MODEL) -f features -t chunk |\
 	ruby src/extractor.rb |\
 	ruby src/annotate_gold_chunk.rb -t gold > $(DIR_WORK)/jawikify_aux/{}.json "
 
 linker_feature_extraction:
+	mkdir -p $(DIR_WORK)/svm_rank/
 	seq 339 |\
 	parallel $(PARALLEL_OPTIONS) "\
 	cat $(DIR_WORK)/jawikify_aux/{}.json | ruby src/feature_extraction_for_ranking.rb -q {}000 \
 	> $(DIR_WORK)/svm_rank/{}.svm"
+	cat $(DIR_WORK)/svm_rank/<1-200>.svm > train.svm
+	cat $(DIR_WORK)/svm_rank/<201-339>.svm > test.svm
+
+linker_train:
+	sort -k 2 -n -t ':' train.svm > train.svm.sorted
+	./svm_rank/svm_rank_learn -c 0.01 train.svm.sorted train.model
+	./svm_rank/svm_rank_classify test.svm train.model result_svm_rank
+	paste result_svm_rank test.svm | ruby src/evaluate/rank_eval.rb
+#ruby src/model_preprocess.rb < train.model > models/linker.model
 
 test_linker:
+	mkdir -p $(DIR_WORK)/result/
 	ls $(DIR_WORK)/result_json/*-wikified.mention_annotated.json |\
 	parallel $(PARALLEL_OPTIONS) "cat {} |\
 	ruby src/supervised_linker.rb -f gold_extracted -t gold_linked |\
-	ruby src/supervised_linker.rb -f extracted -t linked > work20170113/result/{/.}.json"
+	ruby src/supervised_linker.rb -f extracted -t linked > $(DIR_WORK)/result/{/.}.json"
 
 evaluate_linker:
 	cat $(DIR_WORK)/result/*.json |\
@@ -187,10 +233,6 @@ evaluate_linker:
 	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary
 	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary.gold
 
-linker_train_test_split:
-#	seq 1 272 | parallel "$(DIR_WORK)/svm_rank/{}.svm"
-	cat work20170113/svm_rank/<1-272>.svm > train.svm
-	cat work20170113/svm_rank/<273-339>.svm > test.svm
 
 test.result: work/chunking.model.all
 	cat test2.txt | ruby src/wrap_json.rb |\
@@ -205,21 +247,32 @@ html_visualize:
 #
 # evaluation
 #
+
+#
+# TODO: ENEコーパスの上での train,dev
+# 3 : 1 : 1
+
+# 1642
 crf_filelist:
-	ls workqq/crfsuite/*.f | shuf > $@
-	head -n 1500 $@ > $@.train
-	head -n 1750 $@ | tail -n 250 > $@.dev
-	head -n 1982 $@ | tail -n 232 > $@.test
+	ls $(DIR_WORK)/crfsuite/*.f | shuf > $@
+	head -n 1313 $@ > $@.train
+	head -n 328 $@ | tail -n 328 > $@.test
 
-work/train.ff: crf_filelist.train 
+#crf_filelist:
+#	ls work/crfsuite/*.f | shuf > $@
+#	head -n 1500 $@ > $@.train
+#	head -n 1750 $@ | tail -n 250 > $@.dev
+#	head -n 1982 $@ | tail -n 232 > $@.test
+
+$(DIR_WORK)/train.ff: crf_filelist.train 
 	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
 
-work/dev.ff: crf_filelist.dev
+$(DIR_WORK)/test.ff: crf_filelist.test
 	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
 
-work/test.ff: crf_filelist.test
-	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
+$(DIR_WORK)/md.model.train: $(DIR_WORK)/train.ff 
+	crfsuite learn -m $@ $< > $(DIR_WORK)/crfsuite.log
 
-work/chunking.model.all: work/all.ff
-	crfsuite learn -m $@ -p max_iterations=500 $< > work/crfsuite.log
-
+$(DIR_WORK)/result.conll: $(DIR_WORK)/test.ff 
+	crfsuite tag -r -m $(DIR_WORK)/md.model.train $< > $@
+	cat $@ | tr '\t' ' ' | perl src/conlleval_detail.pl 2> /dev/null
