@@ -204,28 +204,39 @@ linker_feature_extraction_preprocess:
 
 linker_feature_extraction:
 	mkdir -p $(DIR_WORK)/svm_rank/
-	seq 339 |\
+	seq 339 | head -n |\
 	parallel $(PARALLEL_OPTIONS) "\
 	cat $(DIR_WORK)/jawikify_aux/{}.json | ruby src/feature_extraction_for_ranking.rb -q {}000 \
 	> $(DIR_WORK)/svm_rank/{}.svm"
 	cat $(DIR_WORK)/svm_rank/<1-200>.svm > train.svm
 	cat $(DIR_WORK)/svm_rank/<201-339>.svm > test.svm
 
+C=20.0
 linker_train:
+	mkdir -p $(DIR_WORK)/result_rank/
 	sort -k 2 -n -t ':' train.svm > train.svm.sorted
-	./svm_rank/svm_rank_learn -c 0.01 train.svm.sorted train.model
+	./svm_rank/svm_rank_learn -c $(C) train.svm.sorted train.model
 	./svm_rank/svm_rank_classify test.svm train.model result_svm_rank
-	paste result_svm_rank test.svm | ruby src/evaluate/rank_eval.rb
-#ruby src/model_preprocess.rb < train.model > models/linker.model
+	seq 0.0 0.1 2.0 | parallel "paste result_svm_rank test.svm | ruby src/evaluate/rank_eval.rb {} >$(DIR_WORK)/result_rank/{}.rank"
+	ruby src/model_preprocess.rb < train.model > models/linker.model
 
-test_linker:
+LINKER_MODEL=models/linker.model
+linker_test:
 	mkdir -p $(DIR_WORK)/result/
 	ls $(DIR_WORK)/result_json/*-wikified.mention_annotated.json |\
 	parallel $(PARALLEL_OPTIONS) "cat {} |\
-	ruby src/supervised_linker.rb -f gold_extracted -t gold_linked |\
-	ruby src/supervised_linker.rb -f extracted -t linked > $(DIR_WORK)/result/{/.}.json"
+	ruby src/supervised_linker.rb -m $(LINKER_MODEL) -f gold_extracted -t gold_linked |\
+	ruby src/supervised_linker.rb -m $(LINKER_MODEL) -f extracted -t linked > $(DIR_WORK)/result/{/.}.json"
 
-evaluate_linker:
+linker_test2:
+	mkdir -p $(DIR_WORK)/result_json_numbered/
+	mkdir -p $(DIR_WORK)/result_numbered/
+	ruby rename_files_mention_detected.rb $(DIR_WORK)
+	seq 339 | tail -n 139 | parallel $(PARALLEL_OPTIONS) "cat $(DIR_WORK)/result_json_numbered/{}.json |\
+	ruby src/supervised_linker.rb -m $(LINKER_MODEL) -f gold_extracted -t gold_linked |\
+	ruby src/supervised_linker.rb -m $(LINKER_MODEL) -f extracted -t linked > $(DIR_WORK)/result_numbered/{}.json"
+
+linker_evaluate:
 	cat $(DIR_WORK)/result/*.json |\
 	ruby src/evaluate/eval_linked_entities.rb -p linked > $(DIR_WORK)/result/summary
 	cat $(DIR_WORK)/result/*.json |\
@@ -233,13 +244,13 @@ evaluate_linker:
 	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary
 	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result/summary.gold
 
-
-test.result: work/chunking.model.all
-	cat test2.txt | ruby src/wrap_json.rb |\
-        ruby src/apply_mecab.rb |\
-        ruby src/annotate_offset.rb |\
-        ruby src/md_feature_extraction.rb -t features |\
-        ruby src/chunker.rb -m $< -f features -t chunk > result
+linker_evaluate2:
+	cat $(DIR_WORK)/result_numbered/*.json |\
+	ruby src/evaluate/eval_linked_entities.rb -p linked > $(DIR_WORK)/result_numbered/summary
+	cat $(DIR_WORK)/result_numbered/*.json |\
+	ruby src/evaluate/eval_linked_entities.rb -p gold_linked > $(DIR_WORK)/result_numbered/summary.gold
+	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result_numbered/summary
+	ruby src/evaluate/make_summary.rb < $(DIR_WORK)/result_numbered/summary.gold
 
 html_visualize:
 	cat test3.txt | bash analyse.sh | ruby src/to_html.rb > ~/public_html/jawikify_proto/index.html

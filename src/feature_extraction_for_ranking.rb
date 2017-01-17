@@ -23,6 +23,10 @@ class StringSimilarity
     @cache[str] = Levenshtein.similarity(mention, entity['entry'])
     return @cache[str]  #Levenshtein.similarity(mention, entity['entry'])
   end
+  
+  def calc(_, mention, entity, _)
+    return Levenshtein.similarity(mention, entity['entry'])
+  end
 end
 
 class GlobalBoWSimilarity
@@ -131,7 +135,6 @@ if __FILE__ == $0
   args['cg_filename']       = params['c'] || 'data/master06_candidates.kct'
   list_name = params["h"] || "data/list-Name20161220.txt"
   @generalizer = TopLevelAbstractor.new(list_name)
-  
   # qid始点
   qid                       = (params['q'] || 0).to_i
   
@@ -143,6 +146,9 @@ if __FILE__ == $0
   require_relative 'candiate_lookupper.rb'
   @cg = CandidateLookupper.new(args['cg_filename'])
   @kb = CandidateLookupper.new(args['kb_filename'])
+
+  # 候補の足切り
+  TH_CANDIDATE = 0.05
   
   #qid = 0
   while line = gets()
@@ -155,7 +161,7 @@ if __FILE__ == $0
       #p mention
       candidates =  @cg.lookup(mention['surface'])
       next unless candidates
-      candidates['candidates'].each do |e|
+      candidates['candidates'].select{|e| e['p_e_x'] > TH_CANDIDATE }.each do |e|
         #p e
         # e: title => 
         ee = @kb.lookup(e['title'])

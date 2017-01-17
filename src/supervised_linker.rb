@@ -64,7 +64,9 @@ class LinkerModel
     sum = 0.0
     sum += @weights[0]
     @metrics.each.with_index do |metric, i|
-      sum += (@weights[i+1] || 0.0) * metric.calc(doc, mention, entity, e)
+      if @weights[i+1] != 0.0
+        sum += (@weights[i+1] || 0.0) * metric.calc(doc, mention, entity, e)
+      end
     end
     return sum
   end
@@ -91,8 +93,9 @@ if __FILE__ == $0
   
   idf_filename      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'  
   model_filename    = (params['m'] || 'models/linker.model')
-
+  
   TH = (params['T'] || 0.0).to_f
+  TH_CANDIDATE = 0.05
   
   require_relative 'candiate_lookupper.rb'
   @cg = CandidateLookupper.new(cg_filename)
@@ -115,12 +118,18 @@ if __FILE__ == $0
           linked  << {"surface" => surface, "title" => nil, "score" => 0.0}
           next
         end
-        scores = candidates['candidates'].map{ |e|
+        scores = candidates['candidates'].select{|e| e['p_e_x'] > TH_CANDIDATE }.map{ |e|
           ee = @kb.lookup(e['title'])
           s = linker.calc_score(o, surface, ee, e)
           {"surface" => surface, "title" => ee['entry'], "score" => s}
         }
-        linked << scores.max_by {|e| e['score'] }
+        cand = scores.max_by {|e| e['score'] }
+        
+        if cand['score'] < TH
+          linked << {"surface" => surface, "title" => nil, "score" => 0.0}
+        else
+          linked << cand
+        end
       end
       o['ner'][@to] << linked
     end

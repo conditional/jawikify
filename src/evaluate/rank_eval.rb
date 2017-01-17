@@ -21,7 +21,7 @@ groups = arr.group_by{|elem|
   #p elem
   elem[2]
 }
-p groups.length
+#p groups.length
 groups.each do |k,q|
 
   # 全エンティティに対して低いスコアがある
