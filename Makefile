@@ -12,13 +12,13 @@ PARAM_TRAIN =
 #
 # misc
 #
-DIR_WORK = work20170117_all
+DIR_WORK = work20170118
 DIR_LOG  = log
 DIR_DATA = data
 DIR_MODEL = model
 
 BAR = --bar
-NUM_OF_PARALLEL = -j 8
+NUM_OF_PARALLEL = -j 12
 PARALLEL_OPTIONS = $(NUM_OF_PARALLEL) $(DRY) $(BAR)
 
 #FILE_ABSTRACTION = $(DIR_DATA)/list.txt
@@ -132,6 +132,26 @@ work20170113/all.ff:
 work20170117/all.ff:
 	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
 
+$(DIR_WORK)/all.ff:
+	cat $(DIR_WORK)/crfsuite/*.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+
+$(DIR_WORK)/train.ff:
+	ls $(DIR_WORK)/crfsuite/*.f | shuf > list # 1642
+	cat list | head -n 1313 | xargs cat > $(DIR_WORK)/train.f
+	cat $(DIR_WORK)/train.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+#	cat list | head -n 1642 | parallel "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > {.}.ff"
+
+$(DIR_WORK)/test.ff: list
+	cat list | tail -n 328 | xargs cat > $(DIR_WORK)/test.f
+	cat $(DIR_WORK)/test.f | ruby src/label_abstraction.rb -h data/list-Name20161220.txt > $@
+
+$(DIR_WORK)/md.model.train: $(DIR_WORK)/train.ff 
+	crfsuite learn -m $@ $< > $(DIR_WORK)/crfsuite.log.train
+
+$(DIR_WORK)/result.conll: $(DIR_WORK)/test.ff 
+	crfsuite tag -r -m $(DIR_WORK)/md.model.train $< > $@
+	cat $@ | tr '\t' ' ' | perl src/conlleval_detail.pl 2> /dev/null
+
 #[charanda01:~/workspace/jawikify] make models/md.model.e
 #crfsuite learn -m models/md.model.e work20170117/all.ff > models/md.log
 #-------------------------------------------------------------
@@ -139,8 +159,11 @@ work20170117/all.ff:
 #    Elapsed Time.    :7457.88s
 #    (User: 7435.30s, Kernel: 17.70s, CPU Usage: 99%)
 #-------------------------------------------------------------
-models/md.model.e: $(DIR_WORK)/all.ff
+$(DIR_WORK)/md.model: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@ $< > models/md.log
+
+$(DIR_WORK)/md.model.10: $(DIR_WORK)/all.ff
+	crfsuite learn -p max_iterations=10 -m $@ $< > models/md.log
 
 models/md.model: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@ $< > models/md.log
@@ -157,7 +180,7 @@ models/md.model.500: $(DIR_WORK)/all.ff
 models/md.model.200: $(DIR_WORK)/all.ff
 	crfsuite learn -m $@.200 -p max_iterations=200 $< > models/md.log.200
 
-MODEL=models/md.model.e
+MODEL=$(DIR_WORK)/md.model
 mention_detection_evaluate:
 	rm -f results/*.conll
 	mkdir -p $(DIR_WORK)/result_json/
@@ -274,16 +297,9 @@ crf_filelist:
 #	head -n 1500 $@ > $@.train
 #	head -n 1750 $@ | tail -n 250 > $@.dev
 #	head -n 1982 $@ | tail -n 232 > $@.test
-
-$(DIR_WORK)/train.ff: crf_filelist.train 
+#$(DIR_WORK)/train.ff: crf_filelist.train 
+#	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
+#
+#$(DIR_WORK)/test.ff: crf_filelist.test
 	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
 
-$(DIR_WORK)/test.ff: crf_filelist.test
-	cat $< | parallel --bar "cat {} | ruby src/label_abstraction.rb -h data/list-Name20161220.txt" >> $@
-
-$(DIR_WORK)/md.model.train: $(DIR_WORK)/train.ff 
-	crfsuite learn -m $@ $< > $(DIR_WORK)/crfsuite.log
-
-$(DIR_WORK)/result.conll: $(DIR_WORK)/test.ff 
-	crfsuite tag -r -m $(DIR_WORK)/md.model.train $< > $@
-	cat $@ | tr '\t' ' ' | perl src/conlleval_detail.pl 2> /dev/null
