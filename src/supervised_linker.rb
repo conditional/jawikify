@@ -121,7 +121,7 @@ if __FILE__ == $0
         scores = candidates['candidates'].select{|e| e['p_e_x'] > TH_CANDIDATE }.map{ |e|
           ee = @kb.lookup(e['title'])
           s = linker.calc_score(o, surface, ee, e)
-          {"surface" => surface, "title" => ee['entry'], "score" => s}
+          {"surface" => surface, "title" => ee['entry'], "score" => s.round(3)}
         }
         cand = scores.max_by {|e| e['score'] }
         
