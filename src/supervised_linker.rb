@@ -92,7 +92,7 @@ if __FILE__ == $0
   #disambiguate_strategy = 
   
   idf_filename      = params['i'] || 'data/master06_content_mecab_annotated.idf.kch'  
-  model_filename    = (params['m'] || 'models/linker.model')
+  model_filename    = (params['m'] || 'data/linker.model')
   
   TH = (params['T'] || 0.0).to_f
   TH_CANDIDATE = 0.05

@@ -87,7 +87,7 @@ if __FILE__ == $0
   
   params = ARGV.getopts("t:d:v:")
   args={}
-  args['id_filename']      = params['t'] || 'word_ids.tsv'
+  args['id_filename']      = params['t'] || 'data/word_ids.tsv'
   args['vector_filename']  = params['v'] || 'data/charanda04.300.kch'
   args['vector_dimention'] = (params['d'] || 300).to_i
   
